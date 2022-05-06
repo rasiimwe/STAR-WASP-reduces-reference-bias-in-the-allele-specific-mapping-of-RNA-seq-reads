@@ -6,3 +6,7 @@ This repo contains a walkthrough on analyses conducted for STAR+WASP benchmarkin
 Running STAR, STAR_WASP, WASP
 Backend processing files 
 Load htmls 
+
+
+
+Man: overleaf add plot pdfs and tables
