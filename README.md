@@ -81,5 +81,9 @@ samtools index Aligned.out.bam Aligned.out.bai
 $PYTHON $WASP/mapping/filter_remapped_reads.py A_sorted.to.remap.bam  Aligned.out.bam A_sorted.keep.bam
 
 
+## Benchmarking
+Speed
+Memory
+vW_TAG distribution
 
 
