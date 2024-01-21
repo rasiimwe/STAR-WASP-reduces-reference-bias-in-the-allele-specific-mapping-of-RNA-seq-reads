@@ -1,8 +1,8 @@
 # STAR+WASP reduces reference bias in the allele-specific mapping of RNA-seq reads
 This repository contains workflows, analytics files and code used in the generation of the manuscript: STAR+WASP reduces reference bias in the allele-specific mapping of RNA-seq reads  
 
-### Read alignments: STAR, STAR+WASP and WASP
-## STAR:
+## Read alignments: STAR, STAR+WASP and WASP
+### STAR:
 STAR=/usr/bin/STAR
 genomeDirectory="/home/asiimwe/projects/run_env/alpha_star_wasp_benchmarking/genome_directory/"
 fastqFileDir="/scratch/asiimwe/STAR-WASP_FASTQs_VCFs/FASTQ"
@@ -19,7 +19,7 @@ readFiles="--readFilesCommand gunzip -c --readFilesIn $fastqFileDir/sample_id/R1
 $STAR $STARpar $readFiles
 
 
-## STAR+WASP 
+### STAR+WASP 
 STAR=/usr/bin/STAR
 genomeDirectory="/home/asiimwe/projects/run_env/alpha_star_wasp_benchmarking/genome_directory/"
 fastqFileDir="/scratch/asiimwe/STAR-WASP_FASTQs_VCFs/FASTQ"
@@ -40,7 +40,7 @@ hetVcf="--varVCFfile $vcfFileDir/ssd_input_snp_dir/ssd.vcf.snv1het"
 $STAR $STARpar $readFiles $hetVcf
 
 
-## WASP:
+### WASP:
 WASP=/home/asiimwe/WASP
 PYTHON=/home/asiimwe/miniconda3/bin/python3.9
 export PATH=/usr/bin/samtools/:$PATH
