@@ -18,6 +18,8 @@ readFiles="--readFilesCommand gunzip -c --readFilesIn $fastqFileDir/sample_id/R1
 
 $STAR $STARpar $readFiles
 
+&nbsp;
+&nbsp;
 
 ### STAR+WASP 
 STAR=/usr/bin/STAR
@@ -39,6 +41,8 @@ hetVcf="--varVCFfile $vcfFileDir/ssd_input_snp_dir/ssd.vcf.snv1het"
 
 $STAR $STARpar $readFiles $hetVcf
 
+&nbsp;
+&nbsp;
 
 ### WASP:
 WASP=/home/asiimwe/WASP
