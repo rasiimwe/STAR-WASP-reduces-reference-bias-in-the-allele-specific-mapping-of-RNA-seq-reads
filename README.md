@@ -1,4 +1,4 @@
-# STAR+WASP Benchmarking
+# STAR+WASP reduces reference bias in the allele-specific mapping of RNA-seq reads
 STAR_WASP_Benchmarking
 Implementation of WASP in STAR
 This repo contains a walkthrough on analyses conducted for STAR+WASP benchmarking.....
