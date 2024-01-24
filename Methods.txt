@@ -1,8 +1,0 @@
-Data Extration from Geo - mention samples
-Alignment:
-  STAR
-  STAR+WASP
-  WASP
-Extracted run stats for each alignment for the different samples
-Elzar runs - for each alignment run thrice and averaged results accross all runs
-Comparisons
