@@ -21,5 +21,7 @@ This repository contains workflows, analytics files and code used in the generat
 **Please cite (subject to change):**
 
 Rebecca Asiimwe, Dobin Alexander. STAR+WASP reduces reference bias in the allele-specific mapping of RNA-seq reads. bioRxiv 2024:2024.01.21.576391.
+
 https://www.biorxiv.org/content/10.1101/2024.01.21.576391v2
+
 doi: https://doi.org/10.1101/2024.01.21.576391
