@@ -1,0 +1,1054 @@
+---
+title: "STAR+WASP reduces reference bias in the allele-specific mapping of RNA-seq reads: Manuscript Figures"
+author: "Rebecca Asiimwe & Alexander Dobin"
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    downcute_theme: "chaos"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+## Loading Required Libraries
+```{r, warning=FALSE, message=FALSE}
+library(splitstackshape)
+library(dplyr)
+library(ggplot2)
+library(VennDiagram)
+library(RColorBrewer)
+library(gridExtra)
+library(cowplot)
+library(knitr)
+library(kableExtra)
+library(tidyverse)
+library(Hmisc)
+library(ggridges)
+library(venn)
+library(ggthemes)
+library(stringr)
+library(splitstackshape)
+library(chron)
+library(magicfor)
+library(ggtext)
+library(reshape2)
+library(plyr)
+library(formattable)
+library(data.table)
+library(ggrepel)
+require(MASS)
+require(scales) 
+```
+
+```{r}
+setwd("~/projects/run_env/alpha_star_wasp_benchmarking/downstream_analysis/Alpha/Data/")
+```
+
+## Loading data extracted from alighnments and subsequent data calls
+```{r, warning=FALSE, message=FALSE}
+num_reads_reshaped <- read.csv("num_reads_reshaped.csv")
+stats_vW_Tags <- read.csv("stats_vW_Tags.csv")
+df_combined <- read.csv("df_combined.csv")
+wall_clock_melted_converted <- read.csv("wall_clock_melted_converted.csv")
+benchmark_rez_melted <- read.csv("benchmark_rez_melted.csv")
+```
+
+## Reads Overlapping Variants and nReads per Sample
+```{r, fig.heigt=10, fig.width=7, warning=FALSE, message=FALSE}
+STAR_subset <- benchmark_rez_melted %>% filter(Run == "STAR")
+df_orders <-
+  STAR_subset[order(
+    STAR_subset$Sample,
+    STAR_subset$Average_input_read_length,
+    STAR_subset$Number_of_input_reads
+  ), ]
+order_df <- as.character(rev(unique(df_orders$Sample)))
+
+df_combined$state1 <-
+  ordered(
+    df_combined$state1 ,
+    levels = c(
+      "All Alignments",
+      "Alignment Failed WASP Filtering",
+      "Alignment Passed WASP Filtering"
+    )
+  )
+
+global_colors <-  c("darkorange3", "dodgerblue4", "firebrick4")
+
+## Adding read lengths
+read_lengths <- benchmark_rez_melted[, c(2, 7)]
+read_lengths <- read_lengths[!duplicated(read_lengths$Sample),]
+num_reads_reshaped_nreads <-
+  inner_join(num_reads_reshaped, read_lengths, by = "Sample")
+num_reads_reshaped_nreads$Number_of_input_reads_mil <-
+  (num_reads_reshaped_nreads$Number_of_input_reads) / 1000000
+
+(b <-
+    num_reads_reshaped_nreads[order(num_reads_reshaped_nreads$Flag, decreasing = T), ] %>%  filter(Flag == "vW_Tagged Reads")  %>%
+    ggplot() +
+    geom_bar(
+      aes(
+        x = factor(Sample, levels = order_df),
+        y = perc,
+        group = Sample,
+        fill = factor(Flag, levels = c("vW_Tagged Reads", "Reads with no Tag"))
+      ),
+      stat = "identity",
+      width = 0.99,
+      alpha = 0.9,
+      color = "white"
+    ) +
+    geom_text(
+      aes(
+        x = Sample,
+        y = perc,
+        label = paste0(round(perc, 1), "%")
+      ),
+      size = 4,
+      position = position_stack(vjust = 0.5)
+    ) +
+    geom_text(
+      aes(
+        x = Sample,
+        y = perc,
+        label = round(Number_of_input_reads_mil, 1)
+      ),
+      size = 4,
+      position = position_stack(vjust = 1.016),
+      color = "gray40"
+    ) + 
+    theme_test(base_size = 13) +
+    scale_color_manual(values = c("gray60", "gray60")) +
+    scale_fill_manual(values = "gray70") +
+    labs(y = "Reads Overlapping Variants (% of Total)", x = "") +
+    theme(legend.title = element_blank(), legend.position = "none") +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 10)) + scale_x_discrete(expand = c(0, 0))
+) + theme(
+  axis.title.y = element_text(size = 12),
+  axis.text.x = element_text(
+    size = 12,
+    angle = 90,
+    hjust = 1
+  ),
+  axis.text.y = element_text(size = 12),
+  legend.text = element_text(size = 7)
+)          
+```
+
+## Classificaiton of WASP-Rejected Reads
+```{r, warning=FALSE, message=FALSE}
+stats_vW_Tags$vW_Tag_desc <-
+  as.character(stats_vW_Tags$vW_Tag_desc)
+stats_vW_Tags$vW_Tag_desc[stats_vW_Tags$vW_Tag_desc == "Variant Base in Read is N/non-ACGT"] <- "Variant Base in Read is N"
+
+(d <-
+    stats_vW_Tags %>% filter(vW_Tag != 1) %>% filter(round != 0) %>%
+    ggplot() +
+    geom_bar(
+      aes(
+        x = factor(Sample, levels = order_df),
+        round(Freq, 3),
+        group = Sample,
+        fill = vW_Tag_desc
+      ),
+      stat = "identity",
+      width = 0.99,
+      alpha = 0.8
+    ) +
+    geom_text(
+      aes(
+        x = Sample,
+        y = Freq,
+        label = paste0(round(Freq, 2), "%")
+      ),
+      size = 4,
+      position = position_stack(vjust = 0.5)
+    ) +
+    scale_fill_manual(
+      values = c(
+        "Variant Base in Read is N" = "gray15",
+        "Remapped Read did not Map" = "tan2",
+        "Remapped Read Maps to Different Locus" =
+          "dodgerblue4",
+        "Read Overlaps too Many Variants" = "firebrick4"
+      )
+    ) +
+    theme_test(base_size = 13) +
+    labs(y = "WASP-Rejected Reads (%)", x = "") +
+    theme(axis.text.x = element_text(
+      angle = 0,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    )) +
+    scale_y_continuous(expand = c(0.03, 0), limits = c(0, 4.5)) +
+    scale_x_discrete(expand = c(0, 0)) + theme(plot.margin = unit(c(0, 0, 0, 0), "cm")) +   theme(axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    )) +
+    theme(
+      legend.title = element_blank(),
+      legend.position = c(0.22, 0.8)
+    ) +
+    guides(fill = guide_legend(nrow = 4, byrow = FALSE))
+) + theme(
+  axis.title.y = element_text(size = 12),
+  axis.text.x = element_text(size = 12),
+  axis.text.y = element_text(size = 12),
+  legend.text = element_text(size = 9)
+)
+```
+
+## Reference Bias - Three-Way Comp
+```{r, fig.height=5, fig.width=4, warning=FALSE, message=FALSE}
+scale_y <- scales::trans_new(
+  "signed_log",
+  transform = function(x)
+    sign(x) * log1p(abs(x)),
+  inverse = function(x)
+    sign(x) * expm1(abs(x))
+)
+
+df_combined <- read.csv("df_combined.csv")
+
+df_combined$state1 <-
+  ordered(
+    df_combined$state1 ,
+    levels = c(
+      "All Alignments",
+      "Alignment Failed WASP Filtering",
+      "Alignment Passed WASP Filtering"
+    )
+  )
+
+df_combined$state2 <- df_combined$state1
+df_combined$state2 <-
+  as.character(df_combined$state2)
+df_combined$state2[df_combined$state2 == "All Alignments"] <-
+  "All Alignments"
+df_combined$state2[df_combined$state2 == "Alignment Passed WASP Filtering"] <-
+  "Alignment Passed WASP Filtering"
+df_combined$state2[df_combined$state2 == "Alignment Failed WASP Filtering"] <-
+  "Alignment Failed WASP Filtering"
+
+
+df_combined$state2 <-
+  ordered(
+    df_combined$state2 ,
+    levels = c(
+      "All Alignments",
+      "Alignment Failed WASP Filtering",
+      "Alignment Passed WASP Filtering"
+    )
+  )
+unique(df_combined$state2)
+
+(c <- df_combined %>%
+    ggplot(aes(
+      x = state2,
+      y = diff,
+      fill = state2,
+      color = state2
+    )) +
+    geom_boxplot(alpha = 0.9, size = 0.2) + geom_point(size = 1) +
+    labs(y = paste0("Reference Bias (REF% - ALT%)"), x = "") +
+    geom_vline(xintercept = 0) +
+    geom_hline(
+      yintercept = 0,
+      color = "gray30",
+      linetype = "dashed",
+      size = 0.3
+    ) +
+    scale_color_manual(values = c("gray40", "firebrick4", "steelblue4"))  +
+    scale_fill_manual(values = c("gray40", "firebrick4", "steelblue4"))  +
+    theme_light(base_size = 12) +
+    scale_y_continuous(
+      trans = scale_y,
+      breaks = c(-5, 0, 5, 10, 15, 20, 50, 60, 70, 80, 90, 100),
+      limits = c(-5, 100),
+      labels = c(-5, "0", "5", "10", "", "", "50", "", "70", "", "", "100")
+      
+    ) +
+    annotation_logticks(
+      sides = "l",
+      outside = F,
+      short = unit(0.05, "cm"),
+      mid = unit(0.05, "cm"),
+      long = unit(0.2, "cm")
+    ) +
+    
+    theme(legend.position = "right", legend.title = element_blank()) +
+    theme(
+      axis.title.y = element_text(size = 12),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 12),
+      axis.ticks.x = element_blank(),
+      legend.text = element_text(size = 9)
+    ) + theme(
+      legend.title = element_blank(),
+      legend.position = c(0.4, 0.15),
+      legend.background = element_rect(fill = alpha('white', 0))
+    )
+)
+```
+
+## Reference Bias - Two-Way Comp
+```{r, fig.height=5, fig.width=4, warning=FALSE, message=FALSE}
+(f <-
+    df_combined %>% filter(
+      state1 == "All Alignments"  |
+        state1 == "Alignment Passed WASP Filtering"
+    ) %>%
+    ggplot(aes(
+      x = state1, y = diff, fill = state1
+    ))  +
+    geom_boxplot(alpha = 0.9, size = 0.3) +
+    geom_point(size = 1, color = "gray20") +
+    labs(
+      y = paste0("Reference Bias", "\n", "(REF% - ALT%)"),
+      x = ""
+    ) +
+    scale_color_manual(values = c("firebrick4", "steelblue4"))  +
+    scale_fill_manual(values = c("firebrick4", "steelblue4"))  +
+    geom_hline(
+      yintercept = 0,
+      color = "gray20",
+      linetype = "dashed",
+      size = 0.4
+    ) +
+    theme_test(base_size = 13) +
+    scale_y_continuous(limits = c(-5, 10)) +
+    theme(
+      legend.position = c(0.45, 0.15),
+      legend.title = element_blank()
+    ) +
+    scale_x_discrete(
+      labels = function(x)
+        str_wrap(x, width = 12)
+    ) + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  
+) + theme(axis.title.y = element_text(size =12), axis.text.x = element_text(size =8), axis.text.y = element_text(size =8), legend.text = element_text(size =7))
+```
+
+## Mapping speed for STAR, WASP and STAR+WASP 
+```{r, fig.height=5, fig.width=4, warning=FALSE, message=FALSE}
+(e <- wall_clock_melted_converted %>% filter(Threads == "8 Threads") %>% 
+    ggplot(aes(x = factor(Sample, levels=order_df), y = reads_per_hour/1000000, group=Run)) +
+    geom_point(aes(color=factor(Run),shape=factor(Run),fill=factor(Run)), size=3)+
+    scale_shape_manual(values=c(3, 17, 16))+ 
+    scale_color_manual(values=global_colors)+   
+    labs(y = "Million Reads/Hour", x="")+
+    theme_light(base_size = 12) + theme(legend.title = element_blank(), legend.position = c(0.76,0.15),
+                                        legend.background = element_rect(fill=alpha('white', 0)))+ 
+    theme(strip.background =element_rect(fill="white", colour = "white"))+
+    theme(strip.text = element_text(colour = 'black'), strip.text.x =  element_markdown(hjust = 0.5, size=1)) +
+    theme(axis.text.x = element_text(angle = 90,hjust = 1,vjust = 0.5, size=10)) + 
+    scale_y_log10(breaks=c(0,10,20,30,40,50,60,70,80,90, 100,200,300,400,500,600,700,800,900,1000), limits=c(10, 1000), labels=c("","10","","","","","","","","","100","","","","","","","","","1000"))+
+    annotation_logticks(sides = "l", outside = F, short = unit(0.05, "cm"),mid = unit(0.05, "cm"),long = unit(0.2, "cm"))+
+    coord_cartesian(clip = "off")) + theme(axis.title.y = element_text(size =12), axis.text.x = element_text(size =8), axis.text.y = element_text(size =8), legend.text = element_text(size =7))
+```
+
+
+## Figure 1 Panel (Main)
+```{r, fig.height=10, fig.width=12, warning=FALSE, message=FALSE}
+b <- b + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+(main <-
+    plot_grid(
+      b,
+      c,
+      d,
+      e,
+      align = c("v", "h"),
+      rel_widths = c(2.1, 1.1),
+      rel_heights = c(1, 1.35),
+      labels = c("(b)", "(d)", "(c)", "(e)")
+    ))
+
+ggsave(file="manuscript_figures/Figure1.pdf", main,  width=12, height=9, device="pdf", dpi=700 )
+ggsave(file="manuscript_figures/Figure1.pdf", main,  width=12, height=9, device="pdf", dpi=700 )
+```
+
+## Supplementary and Other Figures
+
+## Number of Reads per Sample
+```{r, fig.width=6, warning=FALSE, message=FALSE}
+intro_order <- c(
+    "Total_R1",
+    "Total_R2",
+    "PolyA_R1",
+    "PolyA_R2",
+    "Nucleus_PolyA_R1",
+    "Nucleus_PolyA_R2",
+    "Nucleus_nonPolyA_R1",
+    "Nucleus_nonPolyA_R2",
+    "HG00733",
+    "NA19239",
+    "HG00732",
+    "HG00512",
+    "NA19238",
+    "NA19240",
+    "HG00513",
+    "HG00731"
+  )
+
+num_input_reads_per_sample <- read.csv("num_input_reads_per_sample_supp.csv")
+num_input_reads_per_sample %>%
+  ggplot(aes(
+    reorder(
+      x = factor(Sample, levels = intro_order),
+      -Number_of_input_reads_initial / 1000000
+    ),
+    y = Number_of_input_reads_initial / 1000000
+  )) +
+  geom_bar(stat = "identity", fill = "gray65") +
+  theme_test(base_size = 12) +
+  scale_y_continuous(expand = c(0, 0), limits = c(
+    0,
+    max(num_input_reads_per_sample$Number_of_input_reads_initial) / 1000000 +
+      1
+  )) +
+  scale_x_discrete(expand = c(0, 0)) +
+  labs(y = "Number of Input Reads (Million)", x = "") +
+  theme(axis.text.x = element_text(
+    angle = 90,
+    hjust = 1,
+    vjust = 0.5,
+    size = 10
+  ))
+```
+
+
+## Reference bias for all reads vs. reads that pass filtering for each sample
+```{r, warning=FALSE, message=FALSE}
+df_combined <- read.csv("df_combined.csv")
+
+df_combined_sub <-
+  df_combined %>% filter(state1 == "All Alignments" |
+                                     state1 == "Alignment Passed WASP Filtering")
+unique(df_combined_sub$state1)
+
+df_combined$state1 <-
+  ordered(
+    df_combined$state1 ,
+    levels = c("All Alignments",  "Alignment Passed WASP Filtering")
+  )
+
+df_combined_sub <- df_combined_sub[, c(2, 5, 7)]
+df_combined_sub_reshaped <-
+  reshape(
+    df_combined_sub,
+    idvar = "Sample",
+    timevar = "state1",
+    direction = "wide"
+  )
+
+colnames(df_combined_sub_reshaped) <-
+  c("Sample", "REF-ALT After Filtering", "REF-ALT Unfiltered")
+
+df_combined_sub_reshaped %>%
+  ggplot(aes(x = `REF-ALT Unfiltered`, y = `REF-ALT After Filtering`,  color =
+               Sample)) + geom_point(size = 2.5) + scale_color_manual(
+                 values = c(
+                   "#67000D",
+                   "#A50F15",
+                   "#CB181D",
+                   "#EF3B2C",
+                   "#A63603",
+                   "#FD8D3C",
+                   "#FDD0A2",
+                   "#FDAE6B",
+                   "#08519C",
+                   "#2171B5",
+                   "#4292C6",
+                   "#6BAED6",
+                   "#006D2C",
+                   "#238B45",
+                   "#41AB5D",
+                   "#74C476"
+                 )
+               ) + scale_x_continuous(limits = c(0, 10)) + scale_y_continuous(limits = c(0, 10)) + theme_cowplot()
+```
+
+
+## Mapping speed for STAR, WASP and STAR+WASP - 8 threads
+```{r, fig.height=5, fig.width=4, warning=FALSE, message=FALSE}
+wall_clock_melted_converted <- read.csv("wall_clock_melted_converted.csv")
+
+global_colors <-  c("darkorange3", "dodgerblue4", "firebrick4")
+
+#Million Reads/Hour 8threads
+(threads8 <-
+    wall_clock_melted_converted %>% filter(Threads == "16 Threads") %>%
+    ggplot(aes(
+      x = factor(Sample, levels = order_df),
+      y = reads_per_hour / 1000000,
+      group = Run
+    )) +
+    geom_point(aes(
+      color = factor(Run),
+      shape = factor(Run),
+      fill = factor(Run)
+    ), size = 3) +
+    scale_shape_manual(values = c(3, 17, 16)) +
+    scale_color_manual(values = global_colors) +
+    labs(y = "Million Reads/Hour", x = "") +
+    theme_light(base_size = 12) + theme(legend.title = element_blank(), legend.position = "none") +
+    theme(strip.background = element_rect(
+      fill = "white", colour = "white"
+    )) +
+    theme(
+      strip.text = element_text(colour = 'black'),
+      strip.text.x =  element_markdown(hjust = 0.5, size = 12)
+    ) +
+    theme(axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    )) +
+    scale_y_log10(
+      breaks = c(
+        0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000
+      ),
+      limits = c(10, 2000),
+      labels = c(
+        "", "10", "", "", "", "", "", "", "", "", "100", "", "", "", "", "", "", "", "", "1000", 2000
+      )
+    ) +
+    annotation_logticks(
+      sides = "l",
+      outside = F,
+      short = unit(0.05, "cm"),
+      mid = unit(0.05, "cm"),
+      long = unit(0.2, "cm")
+    ) +
+    coord_cartesian(clip = "off")
+)
+```
+
+## Mapping speed for STAR, WASP and STAR+WASP - 32 threads
+```{r, fig.height=5, fig.width=5.5, warning=FALSE, message=FALSE}
+(threads32 <-
+    wall_clock_melted_converted %>% filter(Threads == "32 Threads") %>%
+    ggplot(aes(
+      x = factor(Sample, levels = order_df),
+      y = reads_per_hour / 1000000,
+      group = Run
+    )) +
+    geom_point(aes(
+      color = factor(Run),
+      shape = factor(Run),
+      fill = factor(Run)
+    ), size = 3) +
+    scale_shape_manual(values = c(3, 17, 16)) +
+    scale_color_manual(values = global_colors) +
+    labs(y = "", x = "") +
+    theme_light(base_size = 12) + theme(legend.title = element_blank(), legend.position = "right") +
+    theme(strip.background = element_rect(
+      fill = "white", colour = "white"
+    )) +
+    theme(
+      strip.text = element_text(colour = 'black'),
+      strip.text.x =  element_markdown(hjust = 0.5, size = 12)
+    ) +
+    theme(axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    )) +
+    theme(axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    )) +
+    scale_y_log10(
+      breaks = c(
+        0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000
+      ),
+      limits = c(10, 2000),
+      labels = c(
+        "", "10",
+        "", "", "", "", "", "", "", "", "100", "", "", "", "", "", "", "", "", "1000", 2000
+      )
+    ) +
+    annotation_logticks(
+      sides = "l",
+      outside = F,
+      short = unit(0.05, "cm"),
+      mid = unit(0.05, "cm"),
+      long = unit(0.2, "cm")
+    ) +
+    coord_cartesian(clip = "off")
+)
+```
+
+```{r, fig.height=4.5, fig.width=8, warning=FALSE, message=FALSE}
+plot_grid(
+  threads8,
+  threads32,
+  nrow = 1,
+  ncol = 2,
+  labels = c("(a)", "(b)"),
+  rel_widths = c(0.68, 0.99),
+  hjust = 0.01,
+  align = 'hv'
+) 
+```
+
+## Distribution of Reads Overlapping Variants (/not)
+```{r, fig.height=4.5, fig.width=9, warning=FALSE, message=FALSE}
+num_reads <- as.data.frame(read.table("read_nums.txt"))
+
+colnames(num_reads)
+colnames(num_reads) <- c("Number_of_Reads", "Read_File_Path")
+num_reads <-
+  cSplit(num_reads, "Read_File_Path", "/", direction = "wide")
+num_reads <- num_reads[, -c(2:9, 11)]
+num_reads$Read_File_Path_09 <-
+  as.character(num_reads$Read_File_Path_09)
+num_reads$Read_File_Path_11 <-
+  as.character(num_reads$Read_File_Path_11)
+
+colnames(num_reads) <- c("Number_of_Reads", "Sample", "Flag")
+num_reads$Flag[num_reads$Flag == "WASP_Reads_Sorted_Unique"] <-
+  "Num_Reads"
+num_reads$Flag[num_reads$Flag == "STAR_WASP_vW_Tagged_Reads_Unique"] <-
+  "vW_Tagged_Reads"
+
+#Converting data frame to short format
+num_reads_reshaped <-
+  reshape(num_reads,
+          idvar = "Sample",
+          timevar = "Flag",
+          direction = "wide")
+colnames(num_reads_reshaped)[2] <- "Num_Reads"
+colnames(num_reads_reshaped)[3] <- "vW_Tagged_Reads"
+
+# Mutating frequencies
+num_reads_reshaped <-
+  num_reads_reshaped %>% mutate("perc_tagged" = ((vW_Tagged_Reads / Num_Reads) *
+                                                   100))
+num_reads_reshaped <-
+  num_reads_reshaped %>% mutate("perc_untagged" = 100 - perc_tagged)
+
+# Plotting distributions
+num_reads_reshaped_tagged <-
+  as.data.frame(num_reads_reshaped[, c(1, 4)])
+num_reads_reshaped_notags <-
+  as.data.frame(num_reads_reshaped[, c(1, 5)])
+colnames(num_reads_reshaped_tagged)[2] <- "perc"
+colnames(num_reads_reshaped_notags)[2] <- "perc"
+num_reads_reshaped_tagged$Flag <- "vW_Tagged Reads"
+num_reads_reshaped_notags$Flag <- "Reads with no Tag"
+
+num_reads_reshaped <-
+  rbind(num_reads_reshaped_tagged, num_reads_reshaped_notags)
+
+
+num_reads_reshaped$Flag <-
+  ordered(num_reads_reshaped$Flag ,
+          levels = c("vW_Tagged Reads", "Reads with no Tag"))
+
+unique(num_reads_reshaped$Sample)
+num_reads_reshaped <-
+  num_reads_reshaped %>% filter(
+    Sample != "NA12878_RAMPAGE_Rep" &
+      Sample != "NA12878_RAMPAGE" & Sample != "NA12878_Small"
+  )
+
+## Cleaning up Sample names
+unique(num_reads_reshaped$Sample)
+#Removing NA12878 from all NA12878 derived samples
+num_reads_reshaped$Sample <-
+  gsub("NA12878_", "", num_reads_reshaped$Sample)
+num_reads_reshaped$Sample <-
+  gsub("Rep", "R2", num_reads_reshaped$Sample)
+num_reads_reshaped$Sample[num_reads_reshaped$Sample == "Total"] <-
+  "Total_R1"
+num_reads_reshaped$Sample[num_reads_reshaped$Sample == "PolyA"] <-
+  "PolyA_R1"
+num_reads_reshaped$Sample[num_reads_reshaped$Sample == "Nucleus_PolyA"] <-
+  "Nucleus_PolyA_R1"
+num_reads_reshaped$Sample[num_reads_reshaped$Sample == "Nucleus_nonPolyA"] <-
+  "Nucleus_nonPolyA_R1"
+
+# Manuscript Plot Read_Distribution
+num_reads_reshaped_plot <- num_reads_reshaped
+num_reads_reshaped_plot$Flag <-
+  as.character(num_reads_reshaped_plot$Flag)
+num_reads_reshaped_plot$Flag[num_reads_reshaped_plot$Flag == "vW_Tagged Reads"] <-
+  "Reads Overlapping Variants"
+num_reads_reshaped_plot$Flag[num_reads_reshaped_plot$Flag == "Reads with no Tag"] <-
+  "Reads not Overlapping Variants"
+num_reads_reshaped_plot$Flag <-
+  as.factor(num_reads_reshaped_plot$Flag)
+num_reads_reshaped_plot[order(num_reads_reshaped_plot$Flag, decreasing = F), ] %>%
+  ggplot() +
+  geom_bar(
+    aes(
+      x = factor(Sample, levels = order_df),
+      y = perc,
+      group = Sample,
+      fill = factor(
+        Flag,
+        levels = c("Reads Overlapping Variants", "Reads not Overlapping Variants")
+      )
+    ),
+    stat = "identity",
+    width = 0.99,
+    alpha = 0.5
+  ) +
+  geom_text(
+    aes(
+      x = Sample,
+      y = perc,
+      label = paste0(round(perc, 1), "%")
+    ),
+    size = 3,
+    position = position_stack(vjust = 0.5)
+  ) + theme_test(base_size = 12) +
+  scale_color_manual(values = c('gray10', "gray70")) +
+  scale_fill_manual(values = c('gray10', "gray70")) +
+  labs(y = "Read Distribution (%)", x = "") +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(
+    angle = 90,
+    hjust = 1,
+    vjust = 0.5,
+    size = 10
+  )) +
+  scale_y_discrete(expand = c(0, 0.5)) + scale_x_discrete(expand = c(0, 0))
+```
+
+
+## Memmory 8, 16 and 32 Threads Respectively
+```{r,fig.height=5, fig.width=13, warning=FALSE, message=FALSE}
+benchmark_rez_melted_memory <- read.csv("benchmark_rez_memory.csv")
+
+memory8threads <-
+  benchmark_rez_melted_memory %>% filter(Threads == "8 Threads") %>%
+  ggplot(aes(
+    x = factor(Sample, levels = order_df),
+    y = (Value) / 1000000,
+    group = Run
+  )) +
+  geom_point(aes(
+    color = factor(Run),
+    shape = factor(Run),
+    fill = factor(Run)
+  ), size = 2.5) +
+  scale_shape_manual(values = c(3, 17, 16)) +
+  scale_color_manual(values = global_colors) +
+  labs(y = "Memory (Gigabytes)", x = "") +
+  theme_light(base_size = 12) + theme(legend.position = "none",  legend.title = element_blank()) +
+  scale_y_continuous(limits = c(30, 40)) +
+  theme(strip.background = element_rect(fill = "white", colour = "white")) +
+  theme(
+    strip.text = element_text(colour = 'black'),
+    strip.text.x =  element_markdown(hjust = 0.5, size = 12)
+  ) +
+  theme(axis.text.x = element_text(
+    angle = 90,
+    hjust = 1,
+    vjust = 0.5,
+    size = 10
+  ))
+
+memory16threads <-
+  benchmark_rez_melted_memory %>% filter(Threads == "16 Threads") %>%
+  ggplot(aes(
+    x = factor(Sample, levels = order_df),
+    y = (Value) / 1000000,
+    group = Run
+  )) +
+  geom_point(aes(
+    color = factor(Run),
+    shape = factor(Run),
+    fill = factor(Run)
+  ), size = 2.5) +
+  scale_shape_manual(values = c(3, 17, 16)) +
+  scale_color_manual(values = global_colors) +
+  labs(y = "", x = "") +
+  theme_light(base_size = 12) + theme(legend.title = element_blank()) +
+  scale_y_continuous(limits = c(30, 40)) +
+  theme(strip.background = element_rect(fill = "white", colour = "white")) +
+  theme(
+    strip.text = element_text(colour = 'black'),
+    strip.text.x =  element_markdown(hjust = 0.5, size = 12),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    ),
+    legend.position = "none"
+  )
+
+memory32threads <-
+  benchmark_rez_melted_memory %>% filter(Threads == "32 Threads") %>%
+  ggplot(aes(
+    x = factor(Sample, levels = order_df),
+    y = (Value) / 1000000,
+    group = Run
+  )) +
+  geom_point(aes(
+    color = factor(Run),
+    shape = factor(Run),
+    fill = factor(Run)
+  ), size = 2.5) +
+  scale_shape_manual(values = c(3, 17, 16)) +
+  scale_color_manual(values = global_colors) +
+  labs(y = "", x = "") +
+  theme_light(base_size = 12) + theme(legend.title = element_blank()) +
+  scale_y_continuous(limits = c(30, 40)) +
+  theme(strip.background = element_rect(fill = "white", colour = "white")) +
+  theme(
+    strip.text = element_text(colour = 'black'),
+    strip.text.x =  element_markdown(hjust = 0.5, size = 12),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  theme(axis.text.x = element_text(
+    angle = 90,
+    hjust = 1,
+    vjust = 0.5,
+    size = 10
+  ))
+
+
+plot_grid(
+  memory8threads,
+  memory16threads,
+  memory32threads,
+  nrow = 1,
+  ncol = 3,
+  labels = c("(a)", "(b)", "(c)"),
+  rel_widths = c(0.85, 0.77, 1.115),
+  hjust = 0.01,
+  align = 'v'
+)
+```
+
+
+## Ref_Bias_Per_Sample
+```{r, warning=FALSE, message=FALSE}
+df_combined <- read.csv("df_combined.csv")
+
+(pe <-
+    df_combined %>% filter(
+      state1 == "Alignment Passed WASP Filtering"  |
+        state1 == "Alignment Failed WASP Filtering"
+    ) %>%
+    ggplot(aes(
+      x = Sample,
+      y = diff,
+      group = Sample,
+      fill = state1
+    )) +
+    geom_col(alpha = 0.9) +
+    scale_y_continuous(limits = c(-50, 100)) +
+    theme_cowplot(font_size = 12) +
+    geom_point(color = "gray20", size = 1) +
+    scale_color_manual(
+      values = c(
+        "Alignment Passed WASP Filtering" = "skyblue2",
+        "Alignment Failed WASP Filtering" = "steelblue4"
+      )
+    )  +
+    scale_fill_manual(
+      values = c(
+        "Alignment Passed WASP Filtering" = "skyblue2",
+        "Alignment Failed WASP Filtering" = "steelblue4"
+      )
+    )  +
+    labs(
+      y = paste0("Reference Bias ", "\n", "(REF% - ALT%)"),
+      x = ""
+    ) +
+    geom_vline(xintercept = 0) +
+    geom_hline(
+      yintercept = 0,
+      color = "gray40",
+      linetype = "dashed",
+      linewidth = 0.3
+    ) +
+    theme(
+      legend.position = "right",
+      legend.text = element_text(size = 8) ,
+      legend.title = element_blank(),
+      axis.text.x = element_text(
+        angle = 90,
+        hjust = 1,
+        vjust = 0.5,
+        size = 10
+      )
+    )
+)
+```
+
+
+```{r, fig.height=11, fig.width=9, warning=FALSE, message=FALSE}
+plot_df <- read.csv("plot_df.csv")
+(b <- plot_df %>%
+    filter(df_state == "vw_Tag1" | df_state == "vw_Tag_other") %>%
+    ggplot(aes(
+      x = reorder(pass_fail,-freq), freq,
+      fill = Bias_State
+    )) +
+    geom_bar(
+      stat = "identity",
+      width = 0.99,
+      alpha = 0.7
+    ) +
+    geom_text(
+      aes(x = pass_fail,
+          y = freq,
+          label = freq),
+      size = 4,
+      position = position_stack(vjust = 0.5)
+    ) +
+    scale_fill_manual(values = c("gray45", "gray65")) +
+    theme_light(base_size = 13) + ggtitle("") +
+    theme(legend.position = "right", legend.title = element_blank()) +
+    labs(x = "", y = "Percentage of Reads Aligning to REF/ALT") +  scale_x_discrete(expand = c(0, 0)) + scale_y_continuous(expand = c(0, 0)) + theme(plot.title = element_text(hjust = 0.5)) +
+    facet_wrap( ~ Sample) + theme(strip.background = element_rect(
+      fill = "white", colour = "white"
+    )) +
+    theme(
+      strip.text = element_text(colour = 'black'),
+      strip.text.x = element_markdown(hjust = 0.5)
+    ) +  theme(axis.text.x = element_text(
+      angle = 90,
+      hjust = 0.5,
+      vjust = 0.5,
+      size = 10
+    ))
+)
+```
+
+## Mapping speed for STAR, WASP and STAR+WASP - Shared Computing Environment
+```{r, fig.height=5, fig.width=12, warning=FALSE, message=FALSE}
+merged_df <- read.csv("merged_df_speed_Elzar.csv")
+
+merged_df$Threads <-
+  ordered(merged_df$Threads ,
+          levels = c("8threads", "16threads", "32threads"))
+
+pp <- merged_df %>%
+  ggplot(aes(
+    x = factor(Sample, levels = order_df),
+    y = reads_per_hour / 1000000,
+    group = Run,
+    color = Run
+  )) +
+  geom_point(aes(
+    color = factor(Run),
+    shape = factor(Run),
+    fill = factor(Run)
+  ), size = 2) +
+  scale_shape_manual(values = c(3, 17, 16)) +
+  facet_wrap( ~ Threads) +
+  scale_color_manual(values = global_colors) +
+  labs(y = paste0("Average Speed Across Runs", "\n", "(Million Reads/Hour)"),
+       x = "") +
+  theme_light(base_size = 12) + theme(legend.title = element_blank(), legend.position = "right") +
+  theme(strip.background = element_rect(fill = "white", colour = "white")) +
+  theme(
+    strip.text = element_text(colour = 'white'),
+    strip.text.x =  element_markdown(hjust = 0.5, size = 12)
+  ) +
+  theme(axis.text.x = element_text(
+    angle = 90,
+    hjust = 1,
+    vjust = 0.5,
+    size = 10
+  )) +
+  scale_y_log10(
+    breaks = c(
+      0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000
+    ),
+    limits = c(10, 1000),
+    labels = c(
+      "", "10", "", "", "", "", "", "", "", "", "100", "", "", "", "", "", "", "", "", "1000"
+    )
+  ) +
+  annotation_logticks(
+    sides = "l",
+    outside = F,
+    short = unit(0.05, "cm"),
+    mid = unit(0.05, "cm"),
+    long = unit(0.2, "cm")
+  ) +
+  coord_cartesian(clip = "off")
+
+pp + geom_text(
+  data = merged_df,
+  mapping = aes(x = 4,
+                y = 999,
+                label = Threads),
+  col = "gray30",
+  fontsize = 12,
+  fontface = "italic"
+)
+```
+
+## Memory - STAR, WASP and STAR+WASP - Shared Computing Environment
+```{r, fig.height=5, fig.width=6, warning=FALSE, message=FALSE}
+merged_df <- read.csv("merged_df.csv")
+
+unique(merged_df$Threads)
+
+merged_df$Threads <-
+  ordered(merged_df$Threads ,
+          levels = c("8threads", "16threads", "32threads"))
+
+merged_df %>%
+  ggplot(aes(
+    x = factor(Sample, levels = order_df),
+    y = average_maxrss,
+    group = Run
+  )) +
+  geom_point(aes(color = factor(Threads), shape = factor(Run), ), size =
+               3) +
+  scale_shape_manual(values = c(
+    "STAR" = 3,
+    "WASP" = 1,
+    "STAR_WASP" = 17
+  )) +
+  scale_color_manual(values = c("orange2", "dodgerblue4", "firebrick4")) +
+  labs(
+    y = paste0(
+      "Average Memory Across Runs",
+      "\n",
+      "(Maximum Resident Set Size (GB))"
+    ),
+    x = ""
+  ) +
+  theme_bw() + theme(legend.title = element_blank()) +
+  theme(strip.background = element_rect(fill = "white", colour = "white")) +
+  theme(strip.text = element_text(colour = 'black'),
+        strip.text.x = element_markdown(hjust = 0)) +
+  theme(axis.text.x = element_text(
+    angle = 90,
+    hjust = 1,
+    vjust = 0.5,
+    size = 10
+  )) 
+```
+
+
+
+
+
