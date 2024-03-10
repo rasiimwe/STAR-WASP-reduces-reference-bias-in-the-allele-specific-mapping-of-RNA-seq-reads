@@ -4,7 +4,7 @@ This repository contains workflows, analytics files and code used in the generat
 ##### File descriptions:
 -------------------------
 
-|**Directory : [read_alignment](https://github.com/rasiimwe/STAR-WASP-reduces-reference-bias-in-the-allele-specific-mapping-of-RNA-seq-reads/tree/main/read_alignment)**|------------|------------|
+**Directory : [read_alignment](https://github.com/rasiimwe/STAR-WASP-reduces-reference-bias-in-the-allele-specific-mapping-of-RNA-seq-reads/tree/main/read_alignment)**
 | **SN** | **File**   | **Description** |
 |----------------|------------|------------|
 |1|[base_script_STAR_runs.sh](https://github.com/rasiimwe/STAR-WASP-reduces-reference-bias-in-the-allele-specific-mapping-of-RNA-seq-reads/blob/main/read_alignment/base_script_STAR_runs.sh)|This file examplifies how read alignments with STAR were conducted|
