@@ -360,10 +360,7 @@ b <- b + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
 (main <-
     plot_grid(
-      b,
-      c,
-      d,
-      e,
+      b, c, d, e,
       align = c("v", "h"),
       rel_widths = c(2.1, 1.1),
       rel_heights = c(1, 1.35),
