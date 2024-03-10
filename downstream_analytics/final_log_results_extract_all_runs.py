@@ -19,7 +19,6 @@ subprocess.call(["touch", "/home/asiimwe/projects/run_env/alpha_star_wasp_benchm
 
 outputfile = open("/home/asiimwe/projects/run_env/alpha_star_wasp_benchmarking/dataExtractions/final_log_results_all_runs.txt", "a")
 
-
 wrt_header1= "Sample" + '|' + "Run" + '|' + "Thread" + '|' + "Param"  + '|' + "Value" + "\n"
 outputfile.write(wrt_header1)
 
