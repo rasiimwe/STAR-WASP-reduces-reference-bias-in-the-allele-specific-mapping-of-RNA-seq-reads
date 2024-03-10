@@ -1,4 +1,4 @@
-#Extracting data for comparative analyses from STAR_WASP and WASP runs (example extract from 32-thread runs)
+#Extracting data for comparative analyses from STAR+WASP and WASP runs (example extract from 32-thread runs)
 
 #Sorting and creating indexes for bam files
 samtools sort A_sorted.keep.bam -o A_sorted.keep.bam
