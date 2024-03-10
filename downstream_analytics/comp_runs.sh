@@ -1,9 +1,6 @@
-#Extracting data for comparative analyses from STAR_WASP and WASP runs (samples =18 - extracting data from the 32 thread runs)
-#WASP runs have no vW tags so we'll leverage those in the STAR+WASP runs
+#Extracting data for comparative analyses from STAR_WASP and WASP runs (example extract from 32-thread runs)
 
-#Below are the lines to run in the respective WASP directories (32 thread runs)
-
-#Sorting and creating indexes for bam files missing these
+#Sorting and creating indexes for bam files
 samtools sort A_sorted.keep.bam -o A_sorted.keep.bam
 samtools index A_sorted.keep.bam A_sorted.keep.bai
 
@@ -49,7 +46,7 @@ echo "WASP_Reads_Sorted_Unique:" >> comp_res.txt
 wc -l WASP_Reads_Sorted_Unique  >> comp_res.txt 
 echo " " >> comp_res.txt
 
-#2. Next we'll associate WASP-run reads with the vW tags from the STAR+WASP run by joinning the "WASP_Reads_Sorted_Unique" file with "STAR_vW_Tagged_Reads_Unique_Subset (this file contains only 2 colums, read and associated tag - join will be on read id)" 
+#2. Next we'll associate WASP-run reads with the vW tags from the STAR+WASP run by joining the "WASP_Reads_Sorted_Unique" file with "STAR_vW_Tagged_Reads_Unique_Subset (this file contains only 2 columns, read and associated tag - join will be on read id)" 
 #If the files are not sorted, run the following before the join:
 sort -u -k1,1 STAR_vW_Tagged_Reads_Unique_Subset > Sorted_STAR_vW_Tagged_Reads_Unique_Subset
 mv Sorted_STAR_vW_Tagged_Reads_Unique_Subset STAR_vW_Tagged_Reads_Unique_Subset
