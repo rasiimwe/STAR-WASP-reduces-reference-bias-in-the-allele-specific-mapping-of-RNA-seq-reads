@@ -46,7 +46,7 @@ require(scales)
 setwd("~/projects/run_env/alpha_star_wasp_benchmarking/downstream_analysis/Alpha/Data/")
 ```
 
-## Loading data extracted from alighnments and subsequent data calls
+## Loading data extracted from alignments and subsequent data calls
 ```{r, warning=FALSE, message=FALSE}
 num_reads_reshaped <- read.csv("num_reads_reshaped.csv")
 stats_vW_Tags <- read.csv("stats_vW_Tags.csv")
@@ -138,7 +138,7 @@ num_reads_reshaped_nreads$Number_of_input_reads_mil <-
 )          
 ```
 
-## Classificaiton of WASP-Rejected Reads
+## Classification of WASP-Rejected Reads
 ```{r, warning=FALSE, message=FALSE}
 stats_vW_Tags$vW_Tag_desc <-
   as.character(stats_vW_Tags$vW_Tag_desc)
@@ -729,7 +729,7 @@ num_reads_reshaped_plot[order(num_reads_reshaped_plot$Flag, decreasing = F), ] %
 ```
 
 
-## Memmory 8, 16 and 32 Threads Respectively
+## Memory 8, 16 and 32 Threads Respectively
 ```{r,fig.height=5, fig.width=13, warning=FALSE, message=FALSE}
 benchmark_rez_melted_memory <- read.csv("benchmark_rez_memory.csv")
 
