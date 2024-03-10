@@ -8,10 +8,8 @@ samtools sort A_sorted.to.remap.bam -o A_sorted.to.remap.bam
 samtools  index  A_sorted.to.remap.bam A_sorted.to.remap.bai 
 
 
-#Extracting vW tagged reads from STAR+WASP runs (reminder: no tags in STAR or WASP runs)
-#Extracting overall number of reads in bamfile
+#Extracting vW tagged reads from STAR+WASP runs
 samtools view -c /home/asiimwe/projects/run_env/alpha_star_wasp_benchmarking/STAR_WASP/STAR_WASP_Runs/sample/32threads/Aligned.sortedByCoord.out.bam
-
 samtools view /home/asiimwe/projects/run_env/alpha_star_wasp_benchmarking/STAR_WASP/STAR_WASP_Runs/sample/32threads/Aligned.sortedByCoord.out.bam | grep vW:i> STAR_vW_Tagged_Reads 
 wc -l STAR_vW_Tagged_Reads 
 echo "Overall number of reads in .bam file:" >> comp_res.txt 
@@ -41,7 +39,6 @@ echo " " >> comp_res.txt
 samtools view A_sorted.bam | sort -u -k1,1 > WASP_Reads_Sorted_Unique 
 #Checking for duplicates:
 awk -F, 'a[$1]++{print $1}' WASP_Reads_Sorted_Unique
-#samtools view -c A_sorted.bam 
 echo "WASP_Reads_Sorted_Unique:" >> comp_res.txt
 wc -l WASP_Reads_Sorted_Unique  >> comp_res.txt 
 echo " " >> comp_res.txt
@@ -71,7 +68,7 @@ echo "Unique reads to remap:" >> comp_res.txt
 wc -l reads_to_remap_unique >> comp_res.txt #These are WASP reads that need remapping
 echo " " >> comp_res.txt
 
-#This is overall file with remapped reads, we want to extract vW_tagged reads so we shall join these files as well to provide that mapping
+#Overall file with remapped reads. We want to extract vW_tagged reads, so we shall join these files as well to provide that mapping
 join -1 1 -2 1 reads_to_remap_unique STAR_vW_Tagged_Reads_Unique_Subset > reads_to_remap_unique_tagged
 
 #WASP reads to keep
@@ -91,13 +88,12 @@ join -1 1 -2 1 reads_to_keep_unique STAR_vW_Tagged_Reads_Unique_Subset > reads_t
 awk -F, 'a[$1]++{print $1}' STAR_WASP_vW_Tagged_Reads_Unique_Subset
 awk -F, 'a[$1]++{print $1}' reads_to_remap_unique_tagged
 awk -F, 'a[$1]++{print $1}' reads_to_keep_unique_tagged
-#All files have no duplicate reads - Consider including branching logic for instances where we may have or need to consider duplications
 
 
 awk 'FNR==NR{a[$1]=$1;next}{print $0,a[$1]?a[$1]:"NA"}' reads_to_remap_unique_tagged STAR_WASP_vW_Tagged_Reads_Unique_Subset > pass1_to_remap.txt # we can either tag reads that do not intersect as NA or 0: {print $0,a[$1]?a[$1]:0}
 #We also expect wc -l for both pass1_to_remap and pass2 below == wc -l STAR_WASP_vW_Tagged_Reads_Unique_Subset. We are takig all reads in STAR_WASP_vW_Tagged_Reads_Unique_Subset and seeing which of those were flagged for remapping or keeping. If true, fill = read id, if false, fill = NA
 
-#Next we take the output from pass1 and do the same mapping for reads that were kept - column concatenated. Also if true, fill = read id, if false, fill = NA
+#Next we take the output from pass1 and do the same mapping for reads that were kept - column concatenated. Also if true, fill = read id, else, fill = NA
 awk 'FNR==NR{a[$1]=$1;next}{print $0,a[$1]?a[$1]:"NA"}' reads_to_keep_unique_tagged pass1_to_remap.txt > pass2_to_keep.txt
 
 #Extracting file with read, chr, pos, vA, vG and vW_tags for reference bias analysis
